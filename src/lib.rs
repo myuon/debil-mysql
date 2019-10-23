@@ -1,5 +1,8 @@
 use debil::SQLValue;
 
+mod conn;
+pub use conn::*;
+
 #[derive(Clone)]
 pub struct MySQLValue(mysql_async::Value);
 
