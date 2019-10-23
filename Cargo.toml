@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 debil = { git = "https://github.com/myuon/debil.git" }
-mysql_async = "0.20.0"
+mysql_async = "0.21.0-alpha.2"
