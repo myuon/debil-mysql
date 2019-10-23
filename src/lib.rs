@@ -1,5 +1,6 @@
 use debil::SQLValue;
 
+#[derive(Clone)]
 pub struct MySQLValue(mysql_async::Value);
 
 impl SQLValue<MySQLValue> for String {
