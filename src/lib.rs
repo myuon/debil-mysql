@@ -1,10 +1,10 @@
 use debil::SQLValue;
 
+mod types;
+pub use types::*;
+
 mod conn;
 pub use conn::*;
-
-#[derive(Clone)]
-pub struct MySQLValue(mysql_async::Value);
 
 impl SQLValue<MySQLValue> for String {
     fn column_type(_: std::marker::PhantomData<Self>, _: i32) -> String {

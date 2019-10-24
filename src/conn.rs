@@ -1,3 +1,4 @@
+use crate::types::MySQLValue;
 use mysql_async::error::Error;
 use mysql_async::prelude::*;
 
@@ -12,19 +13,33 @@ impl DebilConn {
         DebilConn(conn)
     }
 
-    pub async fn save<T: debil::SQLTable<ValueType = mysql_async::Value>>(
+    pub async fn create_table<T: debil::SQLTable<ValueType = MySQLValue>>(
+        self,
+    ) -> Result<Self, Error> {
+        Ok(DebilConn::from_conn(
+            self.as_conn()
+                .drop_exec(
+                    debil::SQLTable::create_table_query(std::marker::PhantomData::<T>),
+                    params::Params::Empty,
+                )
+                .await?,
+        ))
+    }
+
+    pub async fn save<T: debil::SQLTable<ValueType = MySQLValue>>(
         self,
         data: T,
     ) -> Result<Self, Error> {
         let (query, ps) = data.save_query_with_params();
-        let param: params::Params = From::from(ps);
+        let param: params::Params =
+            From::from(ps.into_iter().map(|(x, y)| (x, y.0)).collect::<Vec<_>>());
 
         Ok(DebilConn::from_conn(
             self.as_conn().drop_exec(query, param).await?,
         ))
     }
 
-    pub async fn load<T: debil::SQLTable<ValueType = mysql_async::Value>>(
+    pub async fn load<T: debil::SQLTable<ValueType = MySQLValue>>(
         self,
     ) -> Result<(Self, Vec<T>), Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
@@ -53,7 +68,7 @@ impl DebilConn {
                     .iter()
                     .map(|c| c.name_str().into_owned())
                     .collect::<Vec<_>>();
-                let values = row.unwrap();
+                let values = row.unwrap().into_iter().map(MySQLValue).collect::<Vec<_>>();
 
                 debil::SQLTable::map_from_sql(
                     column_names
@@ -67,7 +82,7 @@ impl DebilConn {
         Ok((DebilConn::from_conn(conn), vs))
     }
 
-    pub async fn first<T: debil::SQLTable<ValueType = mysql_async::Value>>(
+    pub async fn first<T: debil::SQLTable<ValueType = MySQLValue>>(
         self,
     ) -> Result<(Self, Option<T>), Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
@@ -96,7 +111,7 @@ impl DebilConn {
                     .iter()
                     .map(|c| c.name_str().into_owned())
                     .collect::<Vec<_>>();
-                let values = row.unwrap();
+                let values = row.unwrap().into_iter().map(MySQLValue).collect::<Vec<_>>();
 
                 debil::SQLTable::map_from_sql(
                     column_names
