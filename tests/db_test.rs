@@ -7,7 +7,7 @@ use mysql_async::OptsBuilder;
 #[derive(Table, PartialEq, Debug, Clone)]
 #[sql(table_name = "user", sql_type = "MySQLValue")]
 struct User {
-    #[sql(primary_key = true)]
+    #[sql(size = 50, primary_key = true)]
     user_id: String,
     #[sql(size = 50, unqiue = true)]
     name: String,
@@ -17,6 +17,10 @@ struct User {
 }
 
 async fn setup(conn: DebilConn) -> Result<DebilConn, mysql_async::error::Error> {
+    // drop table
+    let conn = conn.drop_table::<User>().await?;
+
+    // create
     let conn = conn.create_table::<User>().await?;
 
     Ok(conn)
