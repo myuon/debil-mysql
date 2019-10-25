@@ -26,6 +26,22 @@ impl DebilConn {
         ))
     }
 
+    pub async fn drop_table<T: debil::SQLTable<ValueType = MySQLValue>>(
+        self,
+    ) -> Result<Self, Error> {
+        Ok(DebilConn::from_conn(
+            self.as_conn()
+                .drop_exec(
+                    format!(
+                        "DROP TABLE IF EXISTS {}",
+                        debil::SQLTable::table_name(std::marker::PhantomData::<T>),
+                    ),
+                    params::Params::Empty,
+                )
+                .await?,
+        ))
+    }
+
     pub async fn save<T: debil::SQLTable<ValueType = MySQLValue>>(
         self,
         data: T,

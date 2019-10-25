@@ -8,7 +8,11 @@ pub use conn::*;
 
 impl SQLValue<MySQLValue> for String {
     fn column_type(_: std::marker::PhantomData<Self>, size: i32) -> String {
-        format!("varchar({})", size)
+        if size > 0 {
+            format!("varchar({})", size)
+        } else {
+            "text".to_string()
+        }
     }
 
     fn serialize(self) -> MySQLValue {
