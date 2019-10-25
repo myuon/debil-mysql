@@ -22,7 +22,7 @@ async fn setup(conn: DebilConn) -> Result<DebilConn, mysql_async::error::Error> 
     Ok(conn)
 }
 
-#[runtime::test]
+#[tokio::test]
 async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> {
     let pool = mysql_async::Pool::new(
         OptsBuilder::new()
