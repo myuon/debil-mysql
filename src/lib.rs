@@ -7,8 +7,8 @@ mod conn;
 pub use conn::*;
 
 impl SQLValue<MySQLValue> for String {
-    fn column_type(_: std::marker::PhantomData<Self>, _: i32) -> String {
-        "int".to_string()
+    fn column_type(_: std::marker::PhantomData<Self>, size: i32) -> String {
+        format!("varchar({})", size)
     }
 
     fn serialize(self) -> MySQLValue {
@@ -20,8 +20,8 @@ impl SQLValue<MySQLValue> for String {
 }
 
 impl SQLValue<MySQLValue> for i32 {
-    fn column_type(_: std::marker::PhantomData<Self>, size: i32) -> String {
-        format!("varchar({})", size)
+    fn column_type(_: std::marker::PhantomData<Self>, _: i32) -> String {
+        "int".to_string()
     }
 
     fn serialize(self) -> MySQLValue {
