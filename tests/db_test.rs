@@ -38,32 +38,37 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
             .pool_constraints(mysql_async::PoolConstraints::new(1, 1))
             .clone(),
     );
-    let raw_conn = pool.get_conn().await?;
-    let mut conn = DebilConn::from_conn(raw_conn);
 
-    setup(&mut conn).await?;
+    // トップレベルに書くとテストが無限ループする
+    // Dropのタイミング？
+    {
+        let raw_conn = pool.get_conn().await?;
+        let mut conn = DebilConn::from_conn(raw_conn);
 
-    let result = conn.first::<User>().await?;
-    assert!(result.is_none());
+        setup(&mut conn).await?;
 
-    let user1 = User {
-        user_id: "user-123456".to_string(),
-        name: "foo".to_string(),
-        email: "dddd@example.com".to_string(),
-        age: 20,
-    };
-    let user2 = User {
-        user_id: "user-456789".to_string(),
-        name: "bar".to_string(),
-        email: "quux@example.com".to_string(),
-        age: 55,
-    };
-    conn.save::<User>(user1.clone()).await?;
-    conn.save::<User>(user2.clone()).await?;
+        let result = conn.first::<User>().await?;
+        assert!(result.is_none());
 
-    let result = conn.load::<User>().await?;
-    assert_eq!(result.len(), 2);
-    assert_eq!(result, vec![user1, user2]);
+        let user1 = User {
+            user_id: "user-123456".to_string(),
+            name: "foo".to_string(),
+            email: "dddd@example.com".to_string(),
+            age: 20,
+        };
+        let user2 = User {
+            user_id: "user-456789".to_string(),
+            name: "bar".to_string(),
+            email: "quux@example.com".to_string(),
+            age: 55,
+        };
+        conn.save::<User>(user1.clone()).await?;
+        conn.save::<User>(user2.clone()).await?;
+
+        let result = conn.load::<User>().await?;
+        assert_eq!(result.len(), 2);
+        assert_eq!(result, vec![user1, user2]);
+    }
 
     pool.disconnect().await?;
 
