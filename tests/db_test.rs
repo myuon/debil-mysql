@@ -16,14 +16,14 @@ struct User {
     age: i32,
 }
 
-async fn setup(conn: DebilConn) -> Result<DebilConn, mysql_async::error::Error> {
+async fn setup(conn: &mut DebilConn) -> Result<(), mysql_async::error::Error> {
     // drop table
-    let conn = conn.drop_table::<User>().await?;
+    conn.drop_table::<User>().await?;
 
     // create
-    let conn = conn.create_table::<User>().await?;
+    conn.create_table::<User>().await?;
 
-    Ok(conn)
+    Ok(())
 }
 
 #[tokio::test]
@@ -39,11 +39,11 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
             .clone(),
     );
     let raw_conn = pool.get_conn().await?;
-    let conn = DebilConn::from_conn(raw_conn);
+    let mut conn = DebilConn::from_conn(raw_conn);
 
-    let conn = setup(conn).await?;
+    setup(&mut conn).await?;
 
-    let (conn, result) = conn.first::<User>().await?;
+    let result = conn.first::<User>().await?;
     assert!(result.is_none());
 
     let user1 = User {
@@ -58,10 +58,10 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
         email: "quux@example.com".to_string(),
         age: 55,
     };
-    let conn = conn.save::<User>(user1.clone()).await?;
-    let conn = conn.save::<User>(user2.clone()).await?;
+    conn.save::<User>(user1.clone()).await?;
+    conn.save::<User>(user2.clone()).await?;
 
-    let (_, result) = conn.load::<User>().await?;
+    let result = conn.load::<User>().await?;
     assert_eq!(result.len(), 2);
     assert_eq!(result, vec![user1, user2]);
 
