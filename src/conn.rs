@@ -13,6 +13,21 @@ impl DebilConn {
         DebilConn(Some(conn))
     }
 
+    pub async fn sql_query_with_map<U>(
+        &mut self,
+        query: impl AsRef<str>,
+        parameters: impl Into<params::Params>,
+        mapper: impl FnMut(mysql_async::Row) -> U,
+    ) -> Result<Vec<U>, Error> {
+        let conn = self.0.take().unwrap();
+
+        let result = conn.prep_exec(query, parameters).await?;
+        let (conn, vs) = result.map_and_drop(mapper).await?;
+        self.0.replace(conn);
+
+        Ok(vs)
+    }
+
     /// Execute given SQL and maps the results to some SQLTable structure
     pub async fn sql_query<T: debil::SQLTable<ValueType = MySQLValue>>(
         &mut self,
@@ -83,6 +98,46 @@ impl DebilConn {
             params::Params::Empty,
         )
         .await?;
+
+        Ok(())
+    }
+
+    pub async fn migrate<T: debil::SQLTable<ValueType = MySQLValue>>(
+        &mut self,
+    ) -> Result<(), Error> {
+        self.create_table::<T>().await?;
+
+        let table_name = debil::SQLTable::table_name(std::marker::PhantomData::<T>);
+        let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
+
+        for (column_name, column_type, attr) in schema {
+            let vs = self.sql_query_with_map("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = :table_name AND COLUMN_NAME = :column_name", mysql_async::params!{
+                "table_name" => table_name.clone(),
+                "column_name" => column_name.clone(),
+            }, mysql_async::from_row::<String>).await?;
+
+            if vs.is_empty() {
+                self.sql_exec(
+                    format!(
+                        "ALTER TABLE {} ADD COLUMN {}",
+                        table_name,
+                        debil::create_column_query(column_name, column_type, attr)
+                    ),
+                    params::Params::Empty,
+                )
+                .await?;
+            } else if vs[0] != column_type {
+                self.sql_exec(
+                    format!(
+                        "ALTER TABLE {} MODIFY COLUMN {}",
+                        table_name,
+                        debil::create_column_query(column_name, column_type, attr)
+                    ),
+                    params::Params::Empty,
+                )
+                .await?;
+            }
+        }
 
         Ok(())
     }
