@@ -131,7 +131,15 @@ impl DebilConn {
                     format!(
                         "ALTER TABLE {} MODIFY COLUMN {}",
                         table_name,
-                        debil::create_column_query(column_name, column_type, attr)
+                        debil::create_column_query(
+                            column_name,
+                            column_type,
+                            // skip primary key to avoid "Multiple primary key defined" error
+                            debil::FieldAttribute {
+                                primary_key: None,
+                                ..attr
+                            }
+                        )
                     ),
                     params::Params::Empty,
                 )

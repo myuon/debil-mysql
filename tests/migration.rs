@@ -6,6 +6,9 @@ use mysql_async::OptsBuilder;
 #[sql(table_name = "migration_test", sql_type = "debil_mysql::MySQLValue")]
 struct Before {
     n: i32,
+    #[sql(size = 10)]
+    pk: String,
+    still_remaining: i32,
 }
 
 #[derive(Table)]
@@ -14,6 +17,8 @@ struct After {
     n: i64,
     #[sql(size = 100)]
     extra: String,
+    #[sql(size = 11)]
+    pk: String,
 }
 
 #[tokio::test]
