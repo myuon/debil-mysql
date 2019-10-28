@@ -111,10 +111,10 @@ impl DebilConn {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
 
         for (column_name, column_type, attr) in schema {
-            let vs = self.sql_query_with_map("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = :table_name AND COLUMN_NAME = :column_name", mysql_async::params!{
+            let vs = self.sql_query_with_map("SELECT DATA_TYPE, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = :table_name AND COLUMN_NAME = :column_name", mysql_async::params!{
                 "table_name" => table_name.clone(),
                 "column_name" => column_name.clone(),
-            }, mysql_async::from_row::<String>).await?;
+            }, mysql_async::from_row::<(String, String)>).await?;
 
             if vs.is_empty() {
                 self.sql_exec(
@@ -126,7 +126,8 @@ impl DebilConn {
                     params::Params::Empty,
                 )
                 .await?;
-            } else if vs[0] != column_type {
+            } else if vs[0].0 != column_type && vs[0].1 != column_type {
+                // check not only DATA_TYPE but also COLUMN_TYPE (for varchar)
                 self.sql_exec(
                     format!(
                         "ALTER TABLE {} MODIFY COLUMN {}",
