@@ -75,6 +75,19 @@ impl DebilConn {
         Ok(rows)
     }
 
+    /// Execute given all SQLs
+    pub async fn sql_batch_exec(
+        &mut self,
+        query: String,
+        parameters: Vec<params::Params>,
+    ) -> Result<(), Error> {
+        let conn = self.0.take().unwrap();
+        let conn = conn.batch_exec(query, parameters).await?;
+        self.0.replace(conn);
+
+        Ok(())
+    }
+
     pub async fn create_table<T: debil::SQLTable<ValueType = MySQLValue>>(
         &mut self,
     ) -> Result<(), Error> {
@@ -164,6 +177,29 @@ impl DebilConn {
             From::from(ps.into_iter().map(|(x, y)| (x, y.0)).collect::<Vec<_>>());
 
         self.sql_exec(query, param).await?;
+
+        Ok(())
+    }
+
+    pub async fn save_all<T: debil::SQLTable<ValueType = MySQLValue> + Clone>(
+        &mut self,
+        datas: Vec<T>,
+    ) -> Result<(), Error> {
+        if datas.len() == 0 {
+            return Ok(());
+        }
+
+        let (query, _) = datas[0].clone().save_query_with_params();
+        let mut parameters = Vec::<params::Params>::new();
+        for data in datas {
+            let (_, ps) = data.save_query_with_params();
+            let param: params::Params =
+                From::from(ps.into_iter().map(|(x, y)| (x, y.0)).collect::<Vec<_>>());
+
+            parameters.push(param);
+        }
+
+        self.sql_batch_exec(query, parameters).await?;
 
         Ok(())
     }
