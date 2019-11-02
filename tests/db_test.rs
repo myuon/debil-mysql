@@ -60,9 +60,25 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
     conn.save::<User>(user1.clone()).await?;
     conn.save::<User>(user2.clone()).await?;
 
+    conn.save_all::<User>(vec![
+        User {
+            user_id: "_a".to_string(),
+            name: "".to_string(),
+            email: "".to_string(),
+            age: 0,
+        },
+        User {
+            user_id: "_b".to_string(),
+            name: "".to_string(),
+            email: "".to_string(),
+            age: 0,
+        },
+    ])
+    .await?;
+
     let result = conn.load::<User>().await?;
-    assert_eq!(result.len(), 2);
-    assert_eq!(result, vec![user1, user2]);
+    assert_eq!(result.len(), 4);
+    assert_eq!(result[0..2].to_vec(), vec![user1, user2]);
 
     Ok(())
 }
