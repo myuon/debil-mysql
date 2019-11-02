@@ -80,5 +80,10 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
     assert_eq!(result.len(), 4);
     assert_eq!(result[0..2].to_vec(), vec![user1, user2]);
 
+    // check thread safety
+    std::thread::spawn(async move || {
+        conn.load::<User>().await;
+    });
+
     Ok(())
 }
