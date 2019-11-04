@@ -2,15 +2,21 @@ use crate::types::MySQLValue;
 use mysql_async::error::Error;
 use mysql_async::prelude::*;
 
-pub struct DebilConn(Option<mysql_async::Conn>);
+pub struct DebilConn {
+    conn: Option<mysql_async::Conn>,
+    builder: debil::QueryBuilder,
+}
 
 impl DebilConn {
     pub fn as_conn(self) -> mysql_async::Conn {
-        self.0.unwrap()
+        self.conn.unwrap()
     }
 
     pub fn from_conn(conn: mysql_async::Conn) -> Self {
-        DebilConn(Some(conn))
+        DebilConn {
+            conn: Some(conn),
+            builder: debil::QueryBuilder::new(),
+        }
     }
 
     pub async fn sql_query_with_map<U>(
@@ -19,11 +25,11 @@ impl DebilConn {
         parameters: impl Into<params::Params>,
         mapper: impl FnMut(mysql_async::Row) -> U,
     ) -> Result<Vec<U>, Error> {
-        let conn = self.0.take().unwrap();
+        let conn = self.conn.take().unwrap();
 
         let result = conn.prep_exec(query, parameters).await?;
         let (conn, vs) = result.map_and_drop(mapper).await?;
-        self.0.replace(conn);
+        self.conn.replace(conn);
 
         Ok(vs)
     }
@@ -34,7 +40,7 @@ impl DebilConn {
         query: String,
         parameters: params::Params,
     ) -> Result<Vec<T>, Error> {
-        let conn = self.0.take().unwrap();
+        let conn = self.conn.take().unwrap();
 
         let result = conn.prep_exec(query, parameters).await?;
         let (conn, vs) = result
@@ -54,7 +60,7 @@ impl DebilConn {
                 )
             })
             .await?;
-        self.0.replace(conn);
+        self.conn.replace(conn);
 
         Ok(vs)
     }
@@ -65,12 +71,12 @@ impl DebilConn {
         query: String,
         parameters: params::Params,
     ) -> Result<u64, Error> {
-        let conn = self.0.take().unwrap();
+        let conn = self.conn.take().unwrap();
         let result = conn.prep_exec(query, parameters).await?;
 
         let rows = result.affected_rows();
         let conn = result.drop_result().await?;
-        self.0.replace(conn);
+        self.conn.replace(conn);
 
         Ok(rows)
     }
@@ -81,9 +87,9 @@ impl DebilConn {
         query: String,
         parameters: Vec<params::Params>,
     ) -> Result<(), Error> {
-        let conn = self.0.take().unwrap();
+        let conn = self.conn.take().unwrap();
         let conn = conn.batch_exec(query, parameters).await?;
-        self.0.replace(conn);
+        self.conn.replace(conn);
 
         Ok(())
     }
@@ -210,16 +216,17 @@ impl DebilConn {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
 
         // ここをletにせず直接代入するとエラーになる
-        let query = format!(
-            "SELECT {} FROM {}",
-            schema
-                .iter()
-                .map(|(k, _, _)| k.as_str())
-                .collect::<Vec<_>>()
-                .as_slice()
-                .join(", "),
-            debil::SQLTable::table_name(std::marker::PhantomData::<T>),
-        );
+        let query = self
+            .builder
+            .clone()
+            .table(debil::SQLTable::table_name(std::marker::PhantomData::<T>))
+            .selects(
+                schema
+                    .iter()
+                    .map(|(k, _, _)| k.as_str())
+                    .collect::<Vec<_>>(),
+            )
+            .build();
         self.sql_query::<T>(query, params::Params::Empty).await
     }
 
@@ -227,16 +234,18 @@ impl DebilConn {
         &mut self,
     ) -> Result<Option<T>, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
-        let query = format!(
-            "SELECT {} FROM {} LIMIT 1",
-            schema
-                .iter()
-                .map(|(k, _, _)| k.as_str())
-                .collect::<Vec<_>>()
-                .as_slice()
-                .join(", "),
-            debil::SQLTable::table_name(std::marker::PhantomData::<T>),
-        );
+        let query = self
+            .builder
+            .clone()
+            .table(debil::SQLTable::table_name(std::marker::PhantomData::<T>))
+            .selects(
+                schema
+                    .iter()
+                    .map(|(k, _, _)| k.as_str())
+                    .collect::<Vec<_>>(),
+            )
+            .limit(1)
+            .build();
 
         self.sql_query::<T>(query, params::Params::Empty)
             .await

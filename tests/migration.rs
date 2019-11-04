@@ -30,7 +30,9 @@ async fn it_should_migrate() -> Result<(), mysql_async::error::Error> {
             .pass(Some("password"))
             .db_name(Some("db"))
             .prefer_socket(Some(false))
-            .pool_constraints(mysql_async::PoolConstraints::new(1, 1))
+            .pool_options(Some(mysql_async::PoolOptions::with_constraints(
+                mysql_async::PoolConstraints::new(1, 1).unwrap(),
+            )))
             .clone(),
     )
     .await?;
