@@ -63,7 +63,7 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
     // check thread safety
     std::thread::spawn(async move || {
         conn.load::<R>().await;
-        conn.first::<R>().await;
+        conn.first::<R>(vec![]).await;
     });
 
     Ok(())

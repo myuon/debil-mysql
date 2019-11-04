@@ -214,8 +214,6 @@ impl DebilConn {
         &mut self,
     ) -> Result<Vec<T>, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
-
-        // ここをletにせず直接代入するとエラーになる
         let query = self
             .builder
             .clone()
@@ -232,6 +230,7 @@ impl DebilConn {
 
     pub async fn first<T: debil::SQLTable<ValueType = MySQLValue>>(
         &mut self,
+        conds: Vec<&str>, // filtering conditions
     ) -> Result<Option<T>, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
         let query = self
@@ -244,6 +243,7 @@ impl DebilConn {
                     .map(|(k, _, _)| k.as_str())
                     .collect::<Vec<_>>(),
             )
+            .wheres(conds)
             .limit(1)
             .build();
 

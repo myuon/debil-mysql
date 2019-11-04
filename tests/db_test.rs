@@ -44,7 +44,7 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
     let mut conn = DebilConn::from_conn(raw_conn);
     setup(&mut conn).await?;
 
-    let result = conn.first::<User>().await?;
+    let result = conn.first::<User>(vec![]).await?;
     assert!(result.is_none());
 
     let user1 = User {
