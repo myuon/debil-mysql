@@ -209,41 +209,37 @@ impl DebilConn {
     ) -> Result<Vec<T>, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
 
-        self.sql_query::<T>(
-            format!(
-                "SELECT {} FROM {}",
-                schema
-                    .iter()
-                    .map(|(k, _, _)| k.as_str())
-                    .collect::<Vec<_>>()
-                    .as_slice()
-                    .join(", "),
-                debil::SQLTable::table_name(std::marker::PhantomData::<T>),
-            ),
-            params::Params::Empty,
-        )
-        .await
+        // ここをletにせず直接代入するとエラーになる
+        let query = format!(
+            "SELECT {} FROM {}",
+            schema
+                .iter()
+                .map(|(k, _, _)| k.as_str())
+                .collect::<Vec<_>>()
+                .as_slice()
+                .join(", "),
+            debil::SQLTable::table_name(std::marker::PhantomData::<T>),
+        );
+        self.sql_query::<T>(query, params::Params::Empty).await
     }
 
     pub async fn first<T: debil::SQLTable<ValueType = MySQLValue>>(
         &mut self,
     ) -> Result<Option<T>, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
+        let query = format!(
+            "SELECT {} FROM {} LIMIT 1",
+            schema
+                .iter()
+                .map(|(k, _, _)| k.as_str())
+                .collect::<Vec<_>>()
+                .as_slice()
+                .join(", "),
+            debil::SQLTable::table_name(std::marker::PhantomData::<T>),
+        );
 
-        self.sql_query::<T>(
-            format!(
-                "SELECT {} FROM {} LIMIT 1",
-                schema
-                    .iter()
-                    .map(|(k, _, _)| k.as_str())
-                    .collect::<Vec<_>>()
-                    .as_slice()
-                    .join(", "),
-                debil::SQLTable::table_name(std::marker::PhantomData::<T>),
-            ),
-            params::Params::Empty,
-        )
-        .await
-        .map(|mut vs| vs.pop())
+        self.sql_query::<T>(query, params::Params::Empty)
+            .await
+            .map(|mut vs| vs.pop())
     }
 }
