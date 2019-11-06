@@ -16,7 +16,7 @@ struct User {
     age: i32,
 }
 
-async fn setup(conn: &mut DebilConn) -> Result<(), mysql_async::error::Error> {
+async fn setup(conn: &mut DebilConn) -> Result<(), Error> {
     // drop table
     conn.drop_table::<User>().await?;
 
@@ -27,7 +27,7 @@ async fn setup(conn: &mut DebilConn) -> Result<(), mysql_async::error::Error> {
 }
 
 #[tokio::test]
-async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> {
+async fn it_should_create_and_select() -> Result<(), Error> {
     let raw_conn = mysql_async::Conn::new(
         OptsBuilder::new()
             .ip_or_hostname("127.0.0.1")
@@ -44,8 +44,7 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
     let mut conn = DebilConn::from_conn(raw_conn);
     setup(&mut conn).await?;
 
-    let result = conn.first::<User>(vec![]).await?;
-    assert!(result.is_none());
+    conn.first::<User>().await?;
 
     let user1 = User {
         user_id: "user-123456".to_string(),

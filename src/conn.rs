@@ -1,10 +1,9 @@
+use crate::error::Error;
 use crate::types::MySQLValue;
-use mysql_async::error::Error;
 use mysql_async::prelude::*;
 
 pub struct DebilConn {
     conn: Option<mysql_async::Conn>,
-    builder: debil::QueryBuilder,
 }
 
 impl DebilConn {
@@ -13,10 +12,7 @@ impl DebilConn {
     }
 
     pub fn from_conn(conn: mysql_async::Conn) -> Self {
-        DebilConn {
-            conn: Some(conn),
-            builder: debil::QueryBuilder::new(),
-        }
+        DebilConn { conn: Some(conn) }
     }
 
     pub async fn sql_query_with_map<U>(
@@ -210,13 +206,12 @@ impl DebilConn {
         Ok(())
     }
 
-    pub async fn load<T: debil::SQLTable<ValueType = MySQLValue>>(
+    pub async fn load_with<T: debil::SQLTable<ValueType = MySQLValue>>(
         &mut self,
+        builder: debil::QueryBuilder,
     ) -> Result<Vec<T>, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
-        let query = self
-            .builder
-            .clone()
+        let query = builder
             .table(debil::SQLTable::table_name(std::marker::PhantomData::<T>))
             .selects(
                 schema
@@ -228,14 +223,12 @@ impl DebilConn {
         self.sql_query::<T>(query, params::Params::Empty).await
     }
 
-    pub async fn first<T: debil::SQLTable<ValueType = MySQLValue>>(
+    pub async fn first_with<T: debil::SQLTable<ValueType = MySQLValue>>(
         &mut self,
-        conds: Vec<&str>, // filtering conditions
-    ) -> Result<Option<T>, Error> {
+        builder: debil::QueryBuilder,
+    ) -> Result<T, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
-        let query = self
-            .builder
-            .clone()
+        let query = builder
             .table(debil::SQLTable::table_name(std::marker::PhantomData::<T>))
             .selects(
                 schema
@@ -243,12 +236,21 @@ impl DebilConn {
                     .map(|(k, _, _)| k.as_str())
                     .collect::<Vec<_>>(),
             )
-            .wheres(conds)
             .limit(1)
             .build();
 
         self.sql_query::<T>(query, params::Params::Empty)
             .await
-            .map(|mut vs| vs.pop())
+            .map(|mut vs| vs.pop().unwrap())
+    }
+
+    pub async fn load<T: debil::SQLTable<ValueType = MySQLValue>>(
+        &mut self,
+    ) -> Result<Vec<T>, Error> {
+        self.load_with(debil::QueryBuilder::new()).await
+    }
+
+    pub async fn first<T: debil::SQLTable<ValueType = MySQLValue>>(&mut self) -> Result<T, Error> {
+        self.first_with(debil::QueryBuilder::new()).await
     }
 }

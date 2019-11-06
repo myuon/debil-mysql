@@ -6,6 +6,9 @@ pub use types::*;
 mod conn;
 pub use conn::*;
 
+mod error;
+pub use error::*;
+
 impl SQLValue<MySQLValue> for String {
     fn column_type(_: std::marker::PhantomData<Self>, size: i32) -> String {
         if size > 0 {
