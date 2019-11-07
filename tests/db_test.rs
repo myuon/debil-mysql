@@ -42,8 +42,6 @@ async fn it_should_create_and_select() -> Result<(), Error> {
     let mut conn = DebilConn::from_conn(raw_conn);
     setup(&mut conn).await?;
 
-    conn.first::<User>().await?;
-
     let user1 = User {
         user_id: "user-123456".to_string(),
         name: "foo".to_string(),

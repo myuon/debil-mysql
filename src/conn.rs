@@ -241,7 +241,7 @@ impl DebilConn {
 
         self.sql_query::<T>(query, params::Params::Empty)
             .await
-            .map(|mut vs| vs.pop().unwrap())
+            .and_then(|mut vs| vs.pop().ok_or(Error::NotFoundError))
     }
 
     pub async fn load<T: debil::SQLTable<ValueType = MySQLValue>>(
