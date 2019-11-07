@@ -22,7 +22,7 @@ struct After {
 }
 
 #[tokio::test]
-async fn it_should_migrate() -> Result<(), debil_mysql::Error> {
+async fn it_should_migrate() -> Result<(), Error> {
     let raw_conn = mysql_async::Conn::new(
         OptsBuilder::new()
             .ip_or_hostname("127.0.0.1")

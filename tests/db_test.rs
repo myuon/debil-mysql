@@ -85,6 +85,6 @@ async fn it_should_create_and_select() -> Result<(), Error> {
     Ok(())
 }
 
-async fn conn_load(conn: debil_mysql::DebilConn) {
+async fn conn_load(mut conn: debil_mysql::DebilConn) {
     conn.load::<User>().await;
 }
