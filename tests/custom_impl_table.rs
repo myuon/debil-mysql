@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 use debil::*;
 use debil_mysql::*;
 use mysql_async::OptsBuilder;
@@ -59,13 +57,17 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
             .clone(),
     )
     .await?;
-    let mut conn = DebilConn::from_conn(raw_conn);
+    let conn = DebilConn::from_conn(raw_conn);
 
     // check thread safety
-    std::thread::spawn(async move || {
-        conn.load::<R>().await;
-        conn.first::<R>().await;
-    });
+    std::thread::spawn(|| conn_load::<R>(conn));
 
     Ok(())
+}
+
+async fn conn_load<R: debil::SQLTable<ValueType = debil_mysql::MySQLValue>>(
+    mut conn: debil_mysql::DebilConn,
+) {
+    conn.load::<R>().await;
+    conn.first::<R>().await;
 }

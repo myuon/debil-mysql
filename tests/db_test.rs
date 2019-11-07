@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 use debil::*;
 use debil_mysql::*;
 use mysql_async::OptsBuilder;
@@ -82,9 +80,11 @@ async fn it_should_create_and_select() -> Result<(), Error> {
     assert_eq!(result[0..2].to_vec(), vec![user1, user2]);
 
     // check thread safety
-    std::thread::spawn(async move || {
-        conn.load::<User>().await;
-    });
+    std::thread::spawn(|| conn_load(conn));
 
     Ok(())
+}
+
+async fn conn_load(conn: debil_mysql::DebilConn) {
+    conn.load::<User>().await;
 }
