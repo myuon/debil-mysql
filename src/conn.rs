@@ -213,7 +213,7 @@ impl DebilConn {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
         let query = builder
             .table(debil::SQLTable::table_name(std::marker::PhantomData::<T>))
-            .selects(
+            .append_selects(
                 schema
                     .iter()
                     .map(|(k, _, _)| k.as_str())
@@ -230,7 +230,7 @@ impl DebilConn {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
         let query = builder
             .table(debil::SQLTable::table_name(std::marker::PhantomData::<T>))
-            .selects(
+            .append_selects(
                 schema
                     .iter()
                     .map(|(k, _, _)| k.as_str())
