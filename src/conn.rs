@@ -211,12 +211,13 @@ impl DebilConn {
         builder: debil::QueryBuilder,
     ) -> Result<Vec<T>, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
+        let table_name = debil::SQLTable::table_name(std::marker::PhantomData::<T>);
         let query = builder
-            .table(debil::SQLTable::table_name(std::marker::PhantomData::<T>))
+            .table(table_name.clone())
             .append_selects(
                 schema
                     .iter()
-                    .map(|(k, _, _)| k.as_str())
+                    .map(|(k, _, _)| format!("{}.{}", table_name, k))
                     .collect::<Vec<_>>(),
             )
             .build();
@@ -228,12 +229,13 @@ impl DebilConn {
         builder: debil::QueryBuilder,
     ) -> Result<T, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
+        let table_name = debil::SQLTable::table_name(std::marker::PhantomData::<T>);
         let query = builder
-            .table(debil::SQLTable::table_name(std::marker::PhantomData::<T>))
+            .table(table_name.clone())
             .append_selects(
                 schema
                     .iter()
-                    .map(|(k, _, _)| k.as_str())
+                    .map(|(k, _, _)| format!("{}.{}", table_name, k))
                     .collect::<Vec<_>>(),
             )
             .limit(1)
