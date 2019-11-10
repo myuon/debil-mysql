@@ -215,7 +215,7 @@ impl DebilConn {
 
     pub async fn load_with2<
         T: debil::SQLTable<ValueType = MySQLValue>,
-        U: debil::SQLTable<ValueType = MySQLValue>,
+        U: debil::SQLMapper<ValueType = MySQLValue>,
     >(
         &mut self,
         builder: debil::QueryBuilder,
