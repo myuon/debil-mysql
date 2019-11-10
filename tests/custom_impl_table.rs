@@ -8,9 +8,18 @@ struct R {
 }
 
 // custom implementation
-impl SQLTable for R {
+impl SQLMapper for R {
     type ValueType = MySQLValue;
 
+    fn map_from_sql(values: std::collections::HashMap<String, Self::ValueType>) -> Self {
+        R {
+            s: String::deserialize(values["s"].clone()),
+            n: i32::deserialize(values["n"].clone()),
+        }
+    }
+}
+
+impl SQLTable for R {
     fn table_name(_: std::marker::PhantomData<Self>) -> String {
         "r_table".to_string()
     }
@@ -32,13 +41,6 @@ impl SQLTable for R {
         result.push(("n".to_string(), i32::serialize(self.n)));
 
         result
-    }
-
-    fn map_from_sql(values: std::collections::HashMap<String, Self::ValueType>) -> Self {
-        R {
-            s: String::deserialize(values["s"].clone()),
-            n: i32::deserialize(values["n"].clone()),
-        }
     }
 }
 

@@ -31,7 +31,7 @@ impl DebilConn {
     }
 
     /// Execute given SQL and maps the results to some SQLTable structure
-    pub async fn sql_query<T: debil::SQLTable<ValueType = MySQLValue>>(
+    pub async fn sql_query<T: debil::SQLMapper<ValueType = MySQLValue>>(
         &mut self,
         query: String,
         parameters: params::Params,
@@ -48,7 +48,7 @@ impl DebilConn {
                     .collect::<Vec<_>>();
                 let values = row.unwrap().into_iter().map(MySQLValue).collect::<Vec<_>>();
 
-                debil::SQLTable::map_from_sql(
+                debil::map_from_sql::<T>(
                     column_names
                         .into_iter()
                         .zip(values)
