@@ -210,6 +210,16 @@ impl DebilConn {
         &mut self,
         builder: debil::QueryBuilder,
     ) -> Result<Vec<T>, Error> {
+        self.load_with2::<T, T>(builder).await
+    }
+
+    pub async fn load_with2<
+        T: debil::SQLTable<ValueType = MySQLValue>,
+        U: debil::SQLTable<ValueType = MySQLValue>,
+    >(
+        &mut self,
+        builder: debil::QueryBuilder,
+    ) -> Result<Vec<U>, Error> {
         let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
         let table_name = debil::SQLTable::table_name(std::marker::PhantomData::<T>);
         let query = builder
@@ -221,7 +231,7 @@ impl DebilConn {
                     .collect::<Vec<_>>(),
             )
             .build();
-        self.sql_query::<T>(query, params::Params::Empty).await
+        self.sql_query::<U>(query, params::Params::Empty).await
     }
 
     pub async fn first_with<T: debil::SQLTable<ValueType = MySQLValue>>(
