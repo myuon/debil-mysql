@@ -13,8 +13,8 @@ impl SQLMapper for R {
 
     fn map_from_sql(values: std::collections::HashMap<String, Self::ValueType>) -> Self {
         R {
-            s: String::deserialize(values["s"].clone()),
-            n: i32::deserialize(values["n"].clone()),
+            s: <Self::ValueType as SQLValue<String>>::deserialize(values["s"].clone()),
+            n: <Self::ValueType as SQLValue<i32>>::deserialize(values["n"].clone()),
         }
     }
 }
@@ -37,8 +37,14 @@ impl SQLTable for R {
 
     fn map_to_sql(self) -> Vec<(String, Self::ValueType)> {
         let mut result = Vec::new();
-        result.push(("s".to_string(), String::serialize(self.s)));
-        result.push(("n".to_string(), i32::serialize(self.n)));
+        result.push((
+            "s".to_string(),
+            <Self::ValueType as SQLValue<String>>::serialize(self.s),
+        ));
+        result.push((
+            "n".to_string(),
+            <Self::ValueType as SQLValue<i32>>::serialize(self.n),
+        ));
 
         result
     }
