@@ -14,6 +14,19 @@ impl debil::HasNotFound for Error {
     }
 }
 
+fn to_params(params: debil::Params<MySQLValue>) -> params::Params {
+    if params.0.len() == 0 {
+        params::Params::Empty
+    } else {
+        params
+            .0
+            .into_iter()
+            .map(|(k, v)| (k, v.0))
+            .collect::<Vec<_>>()
+            .into()
+    }
+}
+
 #[async_trait]
 impl debil::SQLConn<MySQLValue> for DebilConn {
     type Error = Error;
@@ -24,16 +37,7 @@ impl debil::SQLConn<MySQLValue> for DebilConn {
         params: debil::Params<MySQLValue>,
     ) -> Result<u64, Error> {
         let conn = self.conn.take().unwrap();
-        let result = conn
-            .prep_exec(
-                query,
-                params
-                    .0
-                    .into_iter()
-                    .map(|(k, v)| (k, v.0))
-                    .collect::<Vec<_>>(),
-            )
-            .await?;
+        let result = conn.prep_exec(query, to_params(params)).await?;
 
         let rows = result.affected_rows();
         let conn = result.drop_result().await?;
@@ -49,16 +53,7 @@ impl debil::SQLConn<MySQLValue> for DebilConn {
     ) -> Result<Vec<T>, Self::Error> {
         let conn = self.conn.take().unwrap();
 
-        let result = conn
-            .prep_exec(
-                query,
-                params
-                    .0
-                    .into_iter()
-                    .map(|(k, v)| (k, v.0))
-                    .collect::<Vec<_>>(),
-            )
-            .await?;
+        let result = conn.prep_exec(query, to_params(params)).await?;
         let (conn, vs) = result
             .map_and_drop(|row| {
                 let column_names = row
@@ -84,17 +79,13 @@ impl debil::SQLConn<MySQLValue> for DebilConn {
     async fn sql_batch_exec(
         &mut self,
         query: String,
-        params: debil::Params<MySQLValue>,
+        params_vec: Vec<debil::Params<MySQLValue>>,
     ) -> Result<(), Self::Error> {
         let conn = self.conn.take().unwrap();
         let conn = conn
             .batch_exec(
                 query,
-                params
-                    .0
-                    .into_iter()
-                    .map(|(x, y)| (x, y.0))
-                    .collect::<Vec<_>>(),
+                params_vec.into_iter().map(to_params).collect::<Vec<_>>(),
             )
             .await?;
         self.conn.replace(conn);
@@ -197,12 +188,11 @@ impl DebilConn {
         let (query, _) = datas[0].clone().save_query_with_params();
         let mut parameters = Vec::new();
         for data in datas {
-            let (_, mut ps) = data.save_query_with_params();
-            parameters.append(&mut ps);
+            let (_, ps) = data.save_query_with_params();
+            parameters.push(debil::Params(ps));
         }
 
-        self.sql_batch_exec(query, debil::Params(parameters))
-            .await?;
+        self.sql_batch_exec(query, parameters).await?;
 
         Ok(())
     }

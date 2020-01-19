@@ -72,6 +72,7 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
     let mut conn = DebilConn::from_conn(raw_conn);
 
     conn.create_table::<R>().await.unwrap();
+
     /*
     conn.save(R {
         s: "foo".to_string(),
@@ -87,7 +88,7 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
     Ok(())
 }
 
-async fn conn_load<R: debil::SQLTable<ValueType = debil_mysql::MySQLValue>>(
+async fn conn_load<R: debil::SQLTable<ValueType = debil_mysql::MySQLValue> + Sync + Send>(
     mut conn: debil_mysql::DebilConn,
 ) {
     conn.load::<R>().await.unwrap();

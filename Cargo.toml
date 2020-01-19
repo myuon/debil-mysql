@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-debil = { git = "https://github.com/myuon/debil.git", rev = "f1269373275ac341f086afa2dd79b1debb0ce712" }
+debil = { git = "https://github.com/myuon/debil.git", rev = "b6db73602d6d1b6d4c11dd0bf668c940393b74be" }
 mysql_async = "0.21.1"
 futures = "0.3.1"
 tokio = { version = "0.2.9", features = ["rt-core"] }
