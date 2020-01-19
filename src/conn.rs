@@ -143,7 +143,6 @@ impl DebilConn {
                 .await?;
             } else if (vs[0].0 != column_type && vs[0].1 != column_type)
                 || (attr.not_null != Some(vs[0].2 == "NO"))
-                || (attr.primary_key != Some(vs[0].3 == "PRI"))
                 || (attr.unique != Some(vs[0].3 == "UNI"))
             {
                 // check not only DATA_TYPE but also COLUMN_TYPE (for varchar)
@@ -151,15 +150,7 @@ impl DebilConn {
                     format!(
                         "ALTER TABLE {} MODIFY COLUMN {}",
                         table_name,
-                        debil::create_column_query(
-                            column_name,
-                            column_type,
-                            // skip primary key to avoid "Multiple primary key defined" error
-                            debil::FieldAttribute {
-                                primary_key: None,
-                                ..attr
-                            }
-                        )
+                        debil::create_column_query(column_name, column_type, attr)
                     ),
                     params::Params::Empty,
                 )
