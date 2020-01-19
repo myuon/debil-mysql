@@ -1,9 +1,106 @@
 use crate::error::Error;
 use crate::types::MySQLValue;
+use async_trait::async_trait;
+use debil::SQLConn;
 use mysql_async::prelude::*;
 
 pub struct DebilConn {
     conn: Option<mysql_async::Conn>,
+}
+
+impl debil::HasNotFound for Error {
+    fn not_found() -> Self {
+        Error::NotFoundError
+    }
+}
+
+#[async_trait]
+impl debil::SQLConn<MySQLValue> for DebilConn {
+    type Error = Error;
+
+    async fn sql_exec(
+        &mut self,
+        query: String,
+        params: debil::Params<MySQLValue>,
+    ) -> Result<u64, Error> {
+        let conn = self.conn.take().unwrap();
+        let result = conn
+            .prep_exec(
+                query,
+                params
+                    .0
+                    .into_iter()
+                    .map(|(k, v)| (k, v.0))
+                    .collect::<Vec<_>>(),
+            )
+            .await?;
+
+        let rows = result.affected_rows();
+        let conn = result.drop_result().await?;
+        self.conn.replace(conn);
+
+        Ok(rows)
+    }
+
+    async fn sql_query<T: debil::SQLMapper<ValueType = MySQLValue> + Sync + Send>(
+        &mut self,
+        query: String,
+        params: debil::Params<MySQLValue>,
+    ) -> Result<Vec<T>, Self::Error> {
+        let conn = self.conn.take().unwrap();
+
+        let result = conn
+            .prep_exec(
+                query,
+                params
+                    .0
+                    .into_iter()
+                    .map(|(k, v)| (k, v.0))
+                    .collect::<Vec<_>>(),
+            )
+            .await?;
+        let (conn, vs) = result
+            .map_and_drop(|row| {
+                let column_names = row
+                    .columns_ref()
+                    .iter()
+                    .map(|c| c.name_str().into_owned())
+                    .collect::<Vec<_>>();
+                let values = row.unwrap().into_iter().map(MySQLValue).collect::<Vec<_>>();
+
+                debil::map_from_sql::<T>(
+                    column_names
+                        .into_iter()
+                        .zip(values)
+                        .collect::<std::collections::HashMap<_, _>>(),
+                )
+            })
+            .await?;
+        self.conn.replace(conn);
+
+        Ok(vs)
+    }
+
+    async fn sql_batch_exec(
+        &mut self,
+        query: String,
+        params: debil::Params<MySQLValue>,
+    ) -> Result<(), Self::Error> {
+        let conn = self.conn.take().unwrap();
+        let conn = conn
+            .batch_exec(
+                query,
+                params
+                    .0
+                    .into_iter()
+                    .map(|(x, y)| (x, y.0))
+                    .collect::<Vec<_>>(),
+            )
+            .await?;
+        self.conn.replace(conn);
+
+        Ok(())
+    }
 }
 
 impl DebilConn {
@@ -30,79 +127,7 @@ impl DebilConn {
         Ok(vs)
     }
 
-    /// Execute given SQL and maps the results to some SQLTable structure
-    pub async fn sql_query<T: debil::SQLMapper<ValueType = MySQLValue>>(
-        &mut self,
-        query: String,
-        parameters: params::Params,
-    ) -> Result<Vec<T>, Error> {
-        let conn = self.conn.take().unwrap();
-
-        let result = conn.prep_exec(query, parameters).await?;
-        let (conn, vs) = result
-            .map_and_drop(|row| {
-                let column_names = row
-                    .columns_ref()
-                    .iter()
-                    .map(|c| c.name_str().into_owned())
-                    .collect::<Vec<_>>();
-                let values = row.unwrap().into_iter().map(MySQLValue).collect::<Vec<_>>();
-
-                debil::map_from_sql::<T>(
-                    column_names
-                        .into_iter()
-                        .zip(values)
-                        .collect::<std::collections::HashMap<_, _>>(),
-                )
-            })
-            .await?;
-        self.conn.replace(conn);
-
-        Ok(vs)
-    }
-
-    /// Execute given SQL and return the number of affected rows
-    pub async fn sql_exec(
-        &mut self,
-        query: String,
-        parameters: params::Params,
-    ) -> Result<u64, Error> {
-        let conn = self.conn.take().unwrap();
-        let result = conn.prep_exec(query, parameters).await?;
-
-        let rows = result.affected_rows();
-        let conn = result.drop_result().await?;
-        self.conn.replace(conn);
-
-        Ok(rows)
-    }
-
-    /// Execute given all SQLs
-    pub async fn sql_batch_exec(
-        &mut self,
-        query: String,
-        parameters: Vec<params::Params>,
-    ) -> Result<(), Error> {
-        let conn = self.conn.take().unwrap();
-        let conn = conn.batch_exec(query, parameters).await?;
-        self.conn.replace(conn);
-
-        Ok(())
-    }
-
-    pub async fn create_table<T: debil::SQLTable<ValueType = MySQLValue>>(
-        &mut self,
-    ) -> Result<(), Error> {
-        self.sql_exec(
-            debil::SQLTable::create_table_query(std::marker::PhantomData::<T>),
-            params::Params::Empty,
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn drop_table<T: debil::SQLTable<ValueType = MySQLValue>>(
+    pub async fn drop_table<T: debil::SQLTable<ValueType = MySQLValue> + Sync + Send>(
         &mut self,
     ) -> Result<(), Error> {
         self.sql_exec(
@@ -110,14 +135,14 @@ impl DebilConn {
                 "DROP TABLE IF EXISTS {}",
                 debil::SQLTable::table_name(std::marker::PhantomData::<T>),
             ),
-            params::Params::Empty,
+            debil::Params::<MySQLValue>::new(),
         )
         .await?;
 
         Ok(())
     }
 
-    pub async fn migrate<T: debil::SQLTable<ValueType = MySQLValue>>(
+    pub async fn migrate<T: debil::SQLTable<ValueType = MySQLValue> + Sync + Send>(
         &mut self,
     ) -> Result<(), Error> {
         self.create_table::<T>().await?;
@@ -138,7 +163,7 @@ impl DebilConn {
                         table_name,
                         debil::create_column_query(column_name, column_type, attr)
                     ),
-                    params::Params::Empty,
+                    debil::Params::<MySQLValue>::new(),
                 )
                 .await?;
             } else if (vs[0].0 != column_type && vs[0].1 != column_type)
@@ -152,24 +177,11 @@ impl DebilConn {
                         table_name,
                         debil::create_column_query(column_name, column_type, attr)
                     ),
-                    params::Params::Empty,
+                    debil::Params::<MySQLValue>::new(),
                 )
                 .await?;
             }
         }
-
-        Ok(())
-    }
-
-    pub async fn save<T: debil::SQLTable<ValueType = MySQLValue>>(
-        &mut self,
-        data: T,
-    ) -> Result<(), Error> {
-        let (query, ps) = data.save_query_with_params();
-        let param: params::Params =
-            From::from(ps.into_iter().map(|(x, y)| (x, y.0)).collect::<Vec<_>>());
-
-        self.sql_exec(query, param).await?;
 
         Ok(())
     }
@@ -183,77 +195,15 @@ impl DebilConn {
         }
 
         let (query, _) = datas[0].clone().save_query_with_params();
-        let mut parameters = Vec::<params::Params>::new();
+        let mut parameters = Vec::new();
         for data in datas {
-            let (_, ps) = data.save_query_with_params();
-            let param: params::Params =
-                From::from(ps.into_iter().map(|(x, y)| (x, y.0)).collect::<Vec<_>>());
-
-            parameters.push(param);
+            let (_, mut ps) = data.save_query_with_params();
+            parameters.append(&mut ps);
         }
 
-        self.sql_batch_exec(query, parameters).await?;
+        self.sql_batch_exec(query, debil::Params(parameters))
+            .await?;
 
         Ok(())
-    }
-
-    pub async fn load_with<T: debil::SQLTable<ValueType = MySQLValue>>(
-        &mut self,
-        builder: debil::QueryBuilder,
-    ) -> Result<Vec<T>, Error> {
-        self.load_with2::<T, T>(builder).await
-    }
-
-    pub async fn load_with2<
-        T: debil::SQLTable<ValueType = MySQLValue>,
-        U: debil::SQLMapper<ValueType = MySQLValue>,
-    >(
-        &mut self,
-        builder: debil::QueryBuilder,
-    ) -> Result<Vec<U>, Error> {
-        let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
-        let table_name = debil::SQLTable::table_name(std::marker::PhantomData::<T>);
-        let query = builder
-            .table(table_name.clone())
-            .append_selects(
-                schema
-                    .iter()
-                    .map(|(k, _, _)| format!("{}.{}", table_name, k))
-                    .collect::<Vec<_>>(),
-            )
-            .build();
-        self.sql_query::<U>(query, params::Params::Empty).await
-    }
-
-    pub async fn first_with<T: debil::SQLTable<ValueType = MySQLValue>>(
-        &mut self,
-        builder: debil::QueryBuilder,
-    ) -> Result<T, Error> {
-        let schema = debil::SQLTable::schema_of(std::marker::PhantomData::<T>);
-        let table_name = debil::SQLTable::table_name(std::marker::PhantomData::<T>);
-        let query = builder
-            .table(table_name.clone())
-            .append_selects(
-                schema
-                    .iter()
-                    .map(|(k, _, _)| format!("{}.{}", table_name, k))
-                    .collect::<Vec<_>>(),
-            )
-            .limit(1)
-            .build();
-
-        self.sql_query::<T>(query, params::Params::Empty)
-            .await
-            .and_then(|mut vs| vs.pop().ok_or(Error::NotFoundError))
-    }
-
-    pub async fn load<T: debil::SQLTable<ValueType = MySQLValue>>(
-        &mut self,
-    ) -> Result<Vec<T>, Error> {
-        self.load_with(debil::QueryBuilder::new()).await
-    }
-
-    pub async fn first<T: debil::SQLTable<ValueType = MySQLValue>>(&mut self) -> Result<T, Error> {
-        self.first_with(debil::QueryBuilder::new()).await
     }
 }
