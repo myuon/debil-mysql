@@ -3,9 +3,9 @@ use debil_mysql::*;
 use mysql_async::OptsBuilder;
 
 #[derive(Table, PartialEq, Debug, Clone)]
-#[sql(table_name = "user", sql_type = "MySQLValue")]
+#[sql(table_name = "user", sql_type = "MySQLValue", primary_key = "user_id")]
 struct User {
-    #[sql(size = 50, primary_key = true)]
+    #[sql(size = 50)]
     user_id: String,
     #[sql(size = 50, unqiue = true)]
     name: String,
@@ -15,7 +15,11 @@ struct User {
 }
 
 #[derive(Table, Clone)]
-#[sql(table_name = "user_item_relation", sql_type = "MySQLValue")]
+#[sql(
+    table_name = "user_item_relation",
+    sql_type = "MySQLValue",
+    primary_key = "user_id, item_id"
+)]
 struct UserItem {
     #[sql(size = 50)]
     user_id: String,
@@ -163,9 +167,9 @@ async fn it_should_create_and_select() -> Result<(), Error> {
 
     // check thread safety
     async fn conn_load(mut conn: debil_mysql::DebilConn) {
-        conn.load::<User>().await;
+        conn.load::<User>().await.unwrap();
     }
-    std::thread::spawn(|| conn_load(conn));
+    tokio::spawn(conn_load(conn)).await.unwrap();
 
     Ok(())
 }

@@ -69,10 +69,20 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
             .clone(),
     )
     .await?;
-    let conn = DebilConn::from_conn(raw_conn);
+    let mut conn = DebilConn::from_conn(raw_conn);
+
+    conn.create_table::<R>().await.unwrap();
+    /*
+    conn.save(R {
+        s: "foo".to_string(),
+        n: 100,
+    })
+    .await
+    .unwrap();
+    */
 
     // check thread safety
-    std::thread::spawn(|| conn_load::<R>(conn));
+    tokio::spawn(conn_load::<R>(conn)).await.unwrap();
 
     Ok(())
 }
@@ -80,6 +90,6 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
 async fn conn_load<R: debil::SQLTable<ValueType = debil_mysql::MySQLValue>>(
     mut conn: debil_mysql::DebilConn,
 ) {
-    conn.load::<R>().await;
-    conn.first::<R>().await;
+    conn.load::<R>().await.unwrap();
+    conn.first::<R>().await.unwrap();
 }
