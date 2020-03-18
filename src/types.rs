@@ -1,7 +1,22 @@
 use debil::SQLValue;
+use failure::_core::marker::PhantomData;
 
 #[derive(Clone)]
 pub struct MySQLValue(pub mysql_async::Value);
+
+impl SQLValue<bool> for MySQLValue {
+    fn column_type(_: PhantomData<bool>, size: i32) -> String {
+        "bool".to_string()
+    }
+
+    fn serialize(val: bool) -> Self {
+        MySQLValue(From::from(val))
+    }
+
+    fn deserialize(self) -> bool {
+        mysql_async::from_value(self.0)
+    }
+}
 
 impl SQLValue<String> for MySQLValue {
     fn column_type(_: std::marker::PhantomData<String>, size: i32) -> String {
@@ -35,6 +50,20 @@ impl SQLValue<i32> for MySQLValue {
     }
 }
 
+impl SQLValue<u32> for MySQLValue {
+    fn column_type(_: PhantomData<u32>, size: i32) -> String {
+        "int unsigned".to_string()
+    }
+
+    fn serialize(val: u32) -> Self {
+        MySQLValue(From::from(val))
+    }
+
+    fn deserialize(self) -> u32 {
+        mysql_async::from_value(self.0)
+    }
+}
+
 impl SQLValue<i64> for MySQLValue {
     fn column_type(_: std::marker::PhantomData<i64>, _: i32) -> String {
         "bigint".to_string()
@@ -45,6 +74,20 @@ impl SQLValue<i64> for MySQLValue {
     }
 
     fn deserialize(self) -> i64 {
+        mysql_async::from_value(self.0)
+    }
+}
+
+impl SQLValue<u64> for MySQLValue {
+    fn column_type(_: PhantomData<u64>, size: i32) -> String {
+        "bigint unsigned".to_string()
+    }
+
+    fn serialize(val: u64) -> Self {
+        MySQLValue(From::from(val))
+    }
+
+    fn deserialize(self) -> u64 {
         mysql_async::from_value(self.0)
     }
 }
