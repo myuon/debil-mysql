@@ -177,7 +177,7 @@ impl DebilConn {
         Ok(())
     }
 
-    pub async fn save_all<T: debil::SQLTable<ValueType = MySQLValue> + Clone>(
+    pub async fn create_all<T: debil::SQLTable<ValueType = MySQLValue> + Clone>(
         &mut self,
         datas: Vec<T>,
     ) -> Result<(), Error> {
@@ -185,10 +185,10 @@ impl DebilConn {
             return Ok(());
         }
 
-        let (query, _) = datas[0].clone().save_query_with_params();
+        let (query, _) = datas[0].clone().insert_query_with_params();
         let mut parameters = Vec::new();
         for data in datas {
-            let (_, ps) = data.save_query_with_params();
+            let (_, ps) = data.insert_query_with_params();
             parameters.push(debil::Params(ps));
         }
 

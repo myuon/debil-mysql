@@ -93,7 +93,7 @@ async fn it_should_create_and_select() -> Result<(), Error> {
     conn.save::<User>(user1.clone()).await?;
     conn.save::<User>(user2.clone()).await?;
 
-    conn.save_all::<User>(vec![
+    conn.create_all::<User>(vec![
         User {
             user_id: "_a".to_string(),
             name: "".to_string(),
@@ -122,7 +122,7 @@ async fn it_should_create_and_select() -> Result<(), Error> {
         age: 20,
     };
     conn.save(user.clone()).await?;
-    conn.save_all(vec![
+    conn.create_all(vec![
         UserItem {
             user_id: user_id.clone(),
             item_id: "item-abcd".to_string(),
