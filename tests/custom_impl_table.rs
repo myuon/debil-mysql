@@ -24,10 +24,6 @@ impl SQLTable for R {
         "r_table".to_string()
     }
 
-    fn primary_key_columns(_: std::marker::PhantomData<Self>) -> Vec<String> {
-        vec!["s".to_string(), "n".to_string()]
-    }
-
     fn schema_of(_: std::marker::PhantomData<Self>) -> Vec<(String, String, FieldAttribute)> {
         vec![
             (
@@ -37,6 +33,10 @@ impl SQLTable for R {
             ),
             ("n".to_string(), "int".to_string(), Default::default()),
         ]
+    }
+
+    fn primary_key_columns(_: std::marker::PhantomData<Self>) -> Vec<String> {
+        vec!["s".to_string(), "n".to_string()]
     }
 
     fn map_to_sql(self) -> Vec<(String, Self::ValueType)> {
