@@ -113,6 +113,27 @@ async fn it_should_create_and_select() -> Result<(), Error> {
     assert_eq!(result.len(), 4);
     assert_eq!(result[0..2].to_vec(), vec![user1, user2]);
 
+    // save for create/update
+    let mut user3 = User {
+        user_id: "user-savetest".to_string(),
+        name: "foo".to_string(),
+        email: "dddd@example.com".to_string(),
+        age: 20,
+    };
+    conn.save::<User>(user3.clone()).await?;
+
+    user3.age = 21;
+    conn.save::<User>(user3.clone()).await?;
+
+    let user3_result = conn
+        .first_with::<User>(QueryBuilder::new().filter(format!(
+            "{}.user_id = '{}'",
+            table_name::<User>(),
+            "user-savetest"
+        )))
+        .await?;
+    assert_eq!(user3_result.age, 21);
+
     // join query
     let user_id = "user-join-and-load".to_string();
     let user = User {
