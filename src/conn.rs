@@ -1,7 +1,7 @@
 use crate::error::Error;
 use crate::types::MySQLValue;
 use async_trait::async_trait;
-use debil::{SQLConn, SQLTable};
+use debil::SQLConn;
 use mysql_async::prelude::*;
 
 pub struct DebilConn {
