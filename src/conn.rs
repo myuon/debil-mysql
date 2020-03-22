@@ -158,8 +158,8 @@ impl DebilConn {
                 )
                 .await?;
             } else if (vs[0].0 != column_type && vs[0].1 != column_type)
-                || (attr.not_null != Some(vs[0].2 == "NO"))
-                || (attr.unique != Some(vs[0].3 == "UNI"))
+                || (attr.not_null.unwrap_or(false) != (vs[0].2 == "NO"))
+                || (attr.unique.unwrap_or(false) != (vs[0].3 == "UNI"))
             {
                 // check not only DATA_TYPE but also COLUMN_TYPE (for varchar)
                 self.sql_exec(
