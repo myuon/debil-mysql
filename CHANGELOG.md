@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.1 - 2020-04-06
+
+- Support `debil-0.3.0`
+
 ## v0.2.0 - 2020-03-25
 
 - Support `debil-0.2.0`
