@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.0 - 2020-04-19
+
+- Support `mysql_async-0.23.0`
+- Add `start_transaction`, `commit`, `rollback` primitives for `DebilConn`
+
 ## v0.2.1 - 2020-04-06
 
 - Support `debil-0.3.0`
