@@ -1,7 +1,7 @@
 use crate::error::Error;
 use crate::types::MySQLValue;
 use async_trait::async_trait;
-use debil::SQLConn;
+use debil::{Params, SQLConn};
 use mysql_async::prelude::*;
 
 pub struct DebilConn {
@@ -193,6 +193,25 @@ impl DebilConn {
         }
 
         self.sql_batch_exec(query, parameters).await?;
+
+        Ok(())
+    }
+
+    pub async fn start_transaction(&mut self) -> Result<(), Error> {
+        self.sql_exec("START TRANSACTION".to_string(), Params::new())
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn commit(&mut self) -> Result<(), Error> {
+        self.sql_exec("COMMIT".to_string(), Params::new()).await?;
+
+        Ok(())
+    }
+
+    pub async fn rollback(&mut self) -> Result<(), Error> {
+        self.sql_exec("ROLLBACK".to_string(), Params::new()).await?;
 
         Ok(())
     }
