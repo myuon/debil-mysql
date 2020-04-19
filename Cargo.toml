@@ -15,7 +15,7 @@ categories = ["database"]
 
 [dependencies]
 debil = "0.3.0"
-mysql_async = "0.22.1"
+mysql_async = "0.23.0"
 futures = "0.3.1"
 tokio = { version = "0.2.9", features = ["rt-core"] }
 failure = "0.1.6"
