@@ -103,15 +103,12 @@ impl DebilConn {
         DebilConn { conn: Some(conn) }
     }
 
-    async fn sql_exec_noprep(&mut self, query: String) -> Result<u64, Error> {
+    async fn sql_exec_noprep(&mut self, query: String) -> Result<(), Error> {
         let conn = self.conn.take().unwrap();
-        let result = conn.drop_query(query).await?;
-
-        let rows = result.affected_rows();
-        let conn = result.drop_result().await?;
+        let conn = conn.drop_query(query).await?;
         self.conn.replace(conn);
 
-        Ok(rows)
+        Ok(())
     }
 
     pub async fn sql_query_with_map<U>(
