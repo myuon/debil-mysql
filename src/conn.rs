@@ -103,6 +103,17 @@ impl DebilConn {
         DebilConn { conn: Some(conn) }
     }
 
+    async fn sql_exec_noprep(&mut self, query: String) -> Result<u64, Error> {
+        let conn = self.conn.take().unwrap();
+        let result = conn.drop_query(query).await?;
+
+        let rows = result.affected_rows();
+        let conn = result.drop_result().await?;
+        self.conn.replace(conn);
+
+        Ok(rows)
+    }
+
     pub async fn sql_query_with_map<U>(
         &mut self,
         query: impl AsRef<str>,
@@ -198,20 +209,20 @@ impl DebilConn {
     }
 
     pub async fn start_transaction(&mut self) -> Result<(), Error> {
-        self.sql_exec("START TRANSACTION".to_string(), Params::new())
+        self.sql_exec_noprep("START TRANSACTION".to_string())
             .await?;
 
         Ok(())
     }
 
     pub async fn commit(&mut self) -> Result<(), Error> {
-        self.sql_exec("COMMIT".to_string(), Params::new()).await?;
+        self.sql_exec_noprep("COMMIT".to_string()).await?;
 
         Ok(())
     }
 
     pub async fn rollback(&mut self) -> Result<(), Error> {
-        self.sql_exec("ROLLBACK".to_string(), Params::new()).await?;
+        self.sql_exec_noprep("ROLLBACK".to_string()).await?;
 
         Ok(())
     }
