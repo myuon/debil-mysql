@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.1 - 2020-04-20
+
+- No prepared statement for executing transaction API.
+
 ## v0.3.0 - 2020-04-19
 
 - Support `mysql_async-0.23.0`
