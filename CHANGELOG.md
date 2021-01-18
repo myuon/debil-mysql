@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.0 - 2021-01-18
+
+- Support `debil-0.4.0`
+
 ## v0.3.1 - 2020-04-20
 
 - No prepared statement for executing transaction API.
