@@ -2,6 +2,7 @@ use debil::*;
 use debil_mysql::*;
 use mysql_async::OptsBuilder;
 
+#[derive(Clone)]
 struct R {
     s: String,
     n: i32,
@@ -73,14 +74,12 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
 
     conn.create_table::<R>().await.unwrap();
 
-    /*
     conn.save(R {
         s: "foo".to_string(),
         n: 100,
     })
     .await
     .unwrap();
-    */
 
     // check thread safety
     tokio::spawn(conn_load::<R>(conn)).await.unwrap();
@@ -91,6 +90,6 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
 async fn conn_load<R: debil::SQLTable<ValueType = debil_mysql::MySQLValue> + Sync + Send>(
     mut conn: debil_mysql::DebilConn,
 ) {
-    conn.load::<R>().await.unwrap();
-    conn.first::<R>().await.unwrap();
+    conn.load::<R>(QueryBuilder::new()).await.unwrap();
+    conn.first::<R>(QueryBuilder::new()).await.unwrap();
 }

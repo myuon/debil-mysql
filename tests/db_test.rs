@@ -109,7 +109,7 @@ async fn it_should_create_and_select() -> Result<(), Error> {
     ])
     .await?;
 
-    let result = conn.load::<User>().await?;
+    let result = conn.load::<User>(QueryBuilder::new()).await?;
     assert_eq!(result.len(), 4);
     assert_eq!(result[0..2].to_vec(), vec![user1, user2]);
 
@@ -123,7 +123,7 @@ async fn it_should_create_and_select() -> Result<(), Error> {
     conn.save::<User>(user3.clone()).await?;
 
     let user3_result = conn
-        .first_with::<User>(QueryBuilder::new().filter(format!(
+        .first::<User>(QueryBuilder::new().filter(format!(
             "{}.user_id = '{}'",
             table_name::<User>(),
             "user-savetest"
@@ -135,7 +135,7 @@ async fn it_should_create_and_select() -> Result<(), Error> {
     conn.save::<User>(user3.clone()).await?;
 
     let user3_result = conn
-        .first_with::<User>(QueryBuilder::new().filter(format!(
+        .first::<User>(QueryBuilder::new().filter(format!(
             "{}.user_id = '{}'",
             table_name::<User>(),
             "user-savetest"
@@ -169,7 +169,7 @@ async fn it_should_create_and_select() -> Result<(), Error> {
     .await?;
 
     let j = conn
-        .load_with2::<User, JoinedUserItemsView>(
+        .load2::<User, JoinedUserItemsView>(
             QueryBuilder::new()
                 .left_join(table_name::<UserItem>(), ("user_id", "user_id"))
                 .filter(format!("{}.user_id = '{}'", table_name::<User>(), user_id))
@@ -197,7 +197,7 @@ async fn it_should_create_and_select() -> Result<(), Error> {
 
     // check thread safety
     async fn conn_load(mut conn: debil_mysql::DebilConn) {
-        conn.load::<User>().await.unwrap();
+        conn.load::<User>(QueryBuilder::new()).await.unwrap();
     }
     tokio::spawn(conn_load(conn)).await.unwrap();
 
