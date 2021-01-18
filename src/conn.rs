@@ -1,11 +1,11 @@
 use crate::error::Error;
 use crate::types::MySQLValue;
 use async_trait::async_trait;
-use debil::{Params, SQLConn};
+use debil::SQLConn;
 use mysql_async::prelude::*;
 
 pub struct DebilConn {
-    conn: Option<mysql_async::Conn>,
+    conn: mysql_async::Conn,
 }
 
 impl debil::HasNotFound for Error {
@@ -36,14 +36,11 @@ impl debil::SQLConn<MySQLValue> for DebilConn {
         query: String,
         params: debil::Params<MySQLValue>,
     ) -> Result<u64, Error> {
-        let conn = self.conn.take().unwrap();
-        let result = conn.prep_exec(query, to_params(params)).await?;
+        self.conn
+            .exec_drop(query.as_str(), to_params(params))
+            .await?;
 
-        let rows = result.affected_rows();
-        let conn = result.drop_result().await?;
-        self.conn.replace(conn);
-
-        Ok(rows)
+        Ok(self.conn.affected_rows())
     }
 
     async fn sql_query<T: debil::SQLMapper<ValueType = MySQLValue> + Sync + Send>(
@@ -51,11 +48,10 @@ impl debil::SQLConn<MySQLValue> for DebilConn {
         query: String,
         params: debil::Params<MySQLValue>,
     ) -> Result<Vec<T>, Self::Error> {
-        let conn = self.conn.take().unwrap();
-
-        let result = conn.prep_exec(query, to_params(params)).await?;
-        let (conn, vs) = result
-            .map_and_drop(|row| {
+        let result = self.conn.exec(query.as_str(), to_params(params)).await?;
+        let vs = result
+            .into_iter()
+            .map(|row: mysql_async::Row| {
                 let column_names = row
                     .columns_ref()
                     .iter()
@@ -70,8 +66,7 @@ impl debil::SQLConn<MySQLValue> for DebilConn {
                         .collect::<std::collections::HashMap<_, _>>(),
                 )
             })
-            .await?;
-        self.conn.replace(conn);
+            .collect();
 
         Ok(vs)
     }
@@ -81,14 +76,12 @@ impl debil::SQLConn<MySQLValue> for DebilConn {
         query: String,
         params_vec: Vec<debil::Params<MySQLValue>>,
     ) -> Result<(), Self::Error> {
-        let conn = self.conn.take().unwrap();
-        let conn = conn
-            .batch_exec(
-                query,
+        self.conn
+            .exec_batch(
+                query.as_str(),
                 params_vec.into_iter().map(to_params).collect::<Vec<_>>(),
             )
             .await?;
-        self.conn.replace(conn);
 
         Ok(())
     }
@@ -96,19 +89,11 @@ impl debil::SQLConn<MySQLValue> for DebilConn {
 
 impl DebilConn {
     pub fn as_conn(self) -> mysql_async::Conn {
-        self.conn.unwrap()
+        self.conn
     }
 
     pub fn from_conn(conn: mysql_async::Conn) -> Self {
-        DebilConn { conn: Some(conn) }
-    }
-
-    async fn sql_exec_noprep(&mut self, query: String) -> Result<(), Error> {
-        let conn = self.conn.take().unwrap();
-        let conn = conn.drop_query(query).await?;
-        self.conn.replace(conn);
-
-        Ok(())
+        DebilConn { conn }
     }
 
     pub async fn sql_query_with_map<U>(
@@ -117,13 +102,9 @@ impl DebilConn {
         parameters: impl Into<params::Params>,
         mapper: impl FnMut(mysql_async::Row) -> U,
     ) -> Result<Vec<U>, Error> {
-        let conn = self.conn.take().unwrap();
+        let result = self.conn.exec(query.as_ref(), parameters.into()).await?;
 
-        let result = conn.prep_exec(query, parameters).await?;
-        let (conn, vs) = result.map_and_drop(mapper).await?;
-        self.conn.replace(conn);
-
-        Ok(vs)
+        Ok(result.into_iter().map(mapper).collect())
     }
 
     pub async fn drop_table<T: debil::SQLTable<ValueType = MySQLValue> + Sync + Send>(
@@ -206,20 +187,21 @@ impl DebilConn {
     }
 
     pub async fn start_transaction(&mut self) -> Result<(), Error> {
-        self.sql_exec_noprep("START TRANSACTION".to_string())
+        self.conn
+            .query_drop("START TRANSACTION".to_string())
             .await?;
 
         Ok(())
     }
 
     pub async fn commit(&mut self) -> Result<(), Error> {
-        self.sql_exec_noprep("COMMIT".to_string()).await?;
+        self.conn.query_drop("COMMIT".to_string()).await?;
 
         Ok(())
     }
 
     pub async fn rollback(&mut self) -> Result<(), Error> {
-        self.sql_exec_noprep("ROLLBACK".to_string()).await?;
+        self.conn.query_drop("ROLLBACK".to_string()).await?;
 
         Ok(())
     }

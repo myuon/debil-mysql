@@ -56,15 +56,15 @@ impl SQLTable for R {
 }
 
 #[tokio::test]
-async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> {
+async fn migrate_save_and_select() -> Result<(), mysql_async::Error> {
     let raw_conn = mysql_async::Conn::new(
-        OptsBuilder::new()
+        OptsBuilder::default()
             .ip_or_hostname("127.0.0.1")
             .user(Some("root"))
             .pass(Some("password"))
             .db_name(Some("db"))
             .prefer_socket(Some(false))
-            .pool_options(Some(mysql_async::PoolOptions::with_constraints(
+            .pool_opts(Some(mysql_async::PoolOpts::default().with_constraints(
                 mysql_async::PoolConstraints::new(1, 1).unwrap(),
             )))
             .clone(),
@@ -74,6 +74,7 @@ async fn it_should_create_and_select() -> Result<(), mysql_async::error::Error> 
 
     conn.create_table::<R>().await.unwrap();
 
+    // This is not working for update (#7)
     conn.save(R {
         s: "foo".to_string(),
         n: 100,
