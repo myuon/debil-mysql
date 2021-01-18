@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.0 - 2021-01-18
+
+- Upgrade to `tokio-1.0`, `mysql_async-0.26.0`
+
 ## v0.4.0 - 2021-01-18
 
 - Support `debil-0.4.0`
