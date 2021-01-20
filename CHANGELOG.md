@@ -1,8 +1,12 @@
 # Changelog
 
+## v0.5.2 - 2021-01-20
+
+- Upgrade to `debil-0.4.2`
+
 ## v0.5.1 - 2021-01-20
 
-- Upgrade `debil`
+- Upgrade to `debil-0.4.1`
 
 ## v0.5.0 - 2021-01-18
 
